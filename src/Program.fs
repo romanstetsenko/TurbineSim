@@ -23,6 +23,62 @@ let test(logger: Logger.Simple) =
     |> sprintf "Succesfully started %i turbines."
     |> logger.LogLine
     turbines
+let sample = """
+
+let handlerHigh (t,d)
+    {
+        if d > 90 
+        {
+            Logger.LogLine ("Turbine " + t.Name + " overcame avg:" + d)
+            let consumer = Consumer.connect "#c1-10"
+            consumer.Post "We are at the full power."
+            consumer.Post "Trying to stop the secondary turbine: #10-20"
+            let t2 = Turbine.connect "#10-20"
+            let state = t2.GetState ()
+            if state = TurbineState.Working
+            {
+                let avg2 = t2.GetAverage()
+                if avg2 > 10
+                {
+                    t2.Stop()
+                    Logger.LogLine ("The secondary turbine #10-20 stopped.")
+                }
+            }
+        }
+    }
+
+let handlerLow (t,d)
+    {
+        if d < 10 
+        {
+            Logger.LogLine ("Turbine " + t.Name + " has low avg: " + d)
+            Logger.LogLine ("Trying to start the secondary turbine: #10-20")
+            let t2 = Turbine.connect "#10-20"
+            let state = t2.GetState ()
+            if state = TurbineState.Idle
+            {
+                t1.Start()
+                Logger.LogLine ("The secondary turbine #10-20 started.")
+            }
+        }
+    }
+
+let wf1
+    {
+        let t1 = Turbine.connect "#1-10"
+        let state = t1.GetState ()
+        if state = TurbineState.Idle
+        {
+            t1.Start()
+        }
+        t1.avgDataStream.Subscribe handlerAvg
+        t1.avgDataStream.Subscribe handlerHigh
+        t1.avgDataStream.Subscribe handlerHigh
+        let aConsumer = Consumer.connect "#c1-*"
+        
+        t1.avgDataStream.SubscribeConsumer aConsumer
+    }
+"""
 
 [<EntryPoint>]
 let main argv =
